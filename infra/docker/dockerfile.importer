@@ -1,0 +1,26 @@
+# Build the Go Binary.
+FROM golang:1.18 as build_importer
+LABEL stage=builder
+ENV CGO_ENABLED 0
+ARG BUILD_REF
+
+# Copy the source code into the container.
+COPY . /importer
+
+# Build the auth binary.
+WORKDIR /importer
+RUN go build -ldflags "-X main.build=${BUILD_REF}" github.com/mchusovlianov/geodata/app/tools/geoimport
+
+
+# Run the Go Binary in Alpine.
+FROM alpine:3.14
+ARG BUILD_DATE
+ARG BUILD_REF
+COPY --from=build_importer /importer/geoimport /importer/geoimport
+COPY --from=build_importer /importer/data_dump.csv /importer/data_dump.csv
+WORKDIR /importer
+CMD ["./geoimport", "-filepath", "data_dump.csv"]
+
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.title="geoimport" \
+      org.opencontainers.image.revision="${BUILD_REF}"

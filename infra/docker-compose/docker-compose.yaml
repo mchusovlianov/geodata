@@ -1,0 +1,47 @@
+version: '3.7'
+
+services:
+  geoimport:
+    container_name: geoimport
+    image: geoimport-amd64:1.0
+    environment:
+      - GEOIMPORT_DB_USER=root
+      - GEOIMPORT_DB_PASSWORD=root
+      - GEOIMPORT_DB_HOST=mysql
+      - GEOIMPORT_DB_NAME=geodata
+      - GEOIMPORT_WORKERSCOUNT=8
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  geoapi:
+    container_name: geoapi
+    image: geoapi-amd64:1.0
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - GEOAPI_DB_USER=root
+      - GEOAPI_DB_PASSWORD=root
+      - GEOAPI_DB_HOST=mysql
+      - GEOAPI_DB_NAME=geodata
+      - GEOAPI_WEB_APIHOST=0.0.0.0:3000
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: percona:8
+    ports:
+      - "127.0.0.1:3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=geodata
+    volumes:
+      - dbdata:/docker-entrypoint-initdb.d/:ro
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 20s
+      retries: 10
+
+volumes:
+  dbdata:
